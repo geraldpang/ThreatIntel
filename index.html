@@ -959,7 +959,7 @@ CYBER NEWS INFLUENCE:
 - Recent incident articles found: mention in summary, add finding if relevant
 - Only penalise score if news clearly indicates a confirmed recent security incident`;
 
-  const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},
+  const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
     body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,messages:[{role:'user',content:prompt}]})});
 
   if(!resp.ok){
