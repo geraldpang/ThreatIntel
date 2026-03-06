@@ -264,13 +264,27 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
 <nav>
   <a class="nav-brand" href="#"><div class="brand-icon">C</div>CyberScore</a>
-  <div style="display:flex;align-items:center;gap:8px;"><div class="nav-pill">11 Intel Sources · AI-Powered</div><div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:5px 12px;font-size:.72rem;font-weight:700;color:var(--muted2);letter-spacing:.06em;">v1.4.0</div></div>
+  <div style="display:flex;align-items:center;gap:8px;"><div class="nav-pill">11 Intel Sources · AI-Powered</div><div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:5px 12px;font-size:.72rem;font-weight:700;color:var(--muted2);letter-spacing:.06em;">v1.4.1</div></div>
 </nav>
 
 <section class="hero" id="heroSection">
   <div class="hero-eyebrow"><span class="pulse"></span>Vendor Security Assessment Platform</div>
   <h1>Real threat intel.<br><span class="grad">Instant vendor score.</span></h1>
   <p class="hero-sub">10 public intelligence sources — live DNS, certificate transparency, WHOIS, malware feeds, VirusTotal & AlienVault OTX — synthesised by AI into a vendor security grade.</p>
+
+  <!-- Anthropic API Key — required -->
+  <div style="width:100%;max-width:680px;margin:0 auto 12px;animation:fadeUp .7s .28s ease both;">
+    <div style="display:flex;align-items:center;gap:10px;background:var(--bg3);border:1.5px solid rgba(59,130,246,0.35);border-radius:12px;padding:10px 16px;box-shadow:0 4px 20px rgba(59,130,246,0.1);">
+      <span style="font-size:.85rem;">🔑</span>
+      <div style="flex:1;">
+        <div style="font-size:.7rem;font-weight:700;color:var(--blue2);letter-spacing:.07em;text-transform:uppercase;margin-bottom:3px;">Anthropic API Key <span style="color:var(--red);margin-left:2px;">required</span></div>
+        <input type="password" id="anthropicKey" placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false"
+          style="width:100%;background:transparent;border:none;outline:none;font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--text);" />
+      </div>
+      <a href="https://console.anthropic.com/settings/keys" target="_blank"
+        style="font-size:.72rem;color:var(--muted);text-decoration:none;white-space:nowrap;transition:color .2s;flex-shrink:0;">Get key →</a>
+    </div>
+  </div>
 
   <div class="search-wrap">
     <div class="search-box">
@@ -486,6 +500,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 </section>
 
 <script>
+const VERSION='1.4.1';
+const BUILD_DATE='2026-03-06';
+console.info(`%cCyberScore ThreatIntel v${VERSION} (${BUILD_DATE})%c — 11 intel sources · AI-powered vendor risk assessment`,
+  'color:#60a5fa;font-weight:800;font-size:13px;','color:#64748b;font-size:11px;');
+
 const $=id=>document.getElementById(id);
 function fillDomain(d){$('domainInput').value=d;$('domainInput').focus();}
 function toggleKeys(){$('keysBody').classList.toggle('open');$('keysToggle').classList.toggle('open');}
@@ -826,8 +845,10 @@ async function startScan(){
   const raw=$('domainInput').value.trim();
   if(!raw){alert('Please enter a domain.');return;}
   const domain=raw.replace(/^https?:\/\//,'').replace(/\/.*$/,'').toLowerCase().trim();
+  const anthropicKey=$('anthropicKey').value.trim();
   const vtKey=$('vtKey').value.trim();
   const otxKey=$('otxKey').value.trim();
+  if(!anthropicKey){showError(domain,'Anthropic API key is required. Enter your key above the search box.');btn.disabled=false;btn.textContent='Assess Vendor';return;}
   const btn=$('scanBtn');btn.disabled=true;btn.textContent='Assessing…';
   $('results').classList.remove('active');
   $('heroSection').style.display='flex';
@@ -841,7 +862,7 @@ async function startScan(){
       fetchBreachHistory(domain),fetchGovernance(domain),fetchCyberNews(domain),
       fetchVirusTotal(domain,vtKey),fetchOTX(domain,otxKey),
     ]);
-    const aiData=await callClaudeAPI(domain,{rdap,dns,crt,urlhaus,threatfox,breach,gov,news,vt,otx});
+    const aiData=await callClaudeAPI(domain,anthropicKey,{rdap,dns,crt,urlhaus,threatfox,breach,gov,news,vt,otx});
     finishScanAnim();
     await new Promise(r=>setTimeout(r,500));
     $('scanning').classList.remove('active');
@@ -854,7 +875,7 @@ async function startScan(){
 }
 
 // ── CLAUDE API ─────────────────────────────────────────────────────────────────
-async function callClaudeAPI(domain,intel){
+async function callClaudeAPI(domain,anthropicKey,intel){
   const{rdap,dns,crt,urlhaus,threatfox,breach,gov,news,vt,otx}=intel;
   const ctx=[];
   if(rdap)ctx.push(`WHOIS: Registrar=${rdap.registrar}, Registered=${rdap.registered?.split('T')[0]||'?'}, Expires=${rdap.expiry?.split('T')[0]||'?'}, NS=[${rdap.nameservers?.join(',')}]`);
@@ -959,7 +980,7 @@ CYBER NEWS INFLUENCE:
 - Recent incident articles found: mention in summary, add finding if relevant
 - Only penalise score if news clearly indicates a confirmed recent security incident`;
 
-  const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
+  const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':anthropicKey,'anthropic-dangerous-direct-browser-access':'true'},
     body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,messages:[{role:'user',content:prompt}]})});
 
   if(!resp.ok){
